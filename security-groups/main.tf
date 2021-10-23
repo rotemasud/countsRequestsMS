@@ -32,7 +32,7 @@ resource "aws_security_group" "ecs_tasks" {
     protocol         = "tcp"
     from_port        = var.container_port
     to_port          = var.container_port
-    cidr_blocks      = ["0.0.0.0/0"]
+    security_groups      = [aws_security_group.alb.id]
     ipv6_cidr_blocks = ["::/0"]
   }
 

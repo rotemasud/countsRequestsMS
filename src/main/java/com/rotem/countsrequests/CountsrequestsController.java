@@ -26,7 +26,7 @@ public class CountsrequestsController {
     @RequestMapping("/count")
 	public String index() {
 
-		final String table_name = "testTable4";
+		final String table_name = "demo";
         String name = "webapp";
         String projection_expression = "countsRequests";
 		Integer requestsCounterFromTable;
@@ -75,12 +75,17 @@ public class CountsrequestsController {
 
 				jsonResult = new JSONObject().put("count", currentrequestsCount).toString();
 
-				return jsonResult;
-
             } else {
+				HashMap<String,AttributeValue> item_values =new HashMap<String,AttributeValue>();
+				item_values.put("Id",new AttributeValue(name));
+				item_values.put("countsRequests",new AttributeValue().withN("1"));
+				ddb.putItem(table_name, item_values);
                 System.out.format("No item found with the key %s!\n", name);
-				throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No item found with the key %s!\n");
+				jsonResult = new JSONObject().put("count", 1).toString();
             }
+
+			return jsonResult;
+
         } catch (AmazonServiceException e) {
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getErrorMessage());
         }		

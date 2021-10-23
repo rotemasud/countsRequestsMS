@@ -9,7 +9,7 @@ terraform {
     encrypt = true
     key     = "terraform.tfstate"
     region  = "eu-central-1"
-    # dynamodb_table = "terraform-state-lock-dynamo" - uncomment this line once the terraform-state-lock-dynamo has been terraformed
+    dynamodb_table = "terraform-state-lock-dynamo" 
   }
 }
 
@@ -28,12 +28,12 @@ resource "aws_dynamodb_table" "dynamodb-terraform-state-lock" {
 }
 
 
-//resource "aws_dynamodb_table" "dynamodb-table" {
-//  source         = "./dynamodb"
-//  name           = var.name
-//  environment    = var.environment
+module "dynamodb_table" {
+  source         = "./dynamodb"
+  name           = var.name
+  environment    = var.environment
   
-//}
+}
 
 module "vpc" {
   source             = "./vpc"

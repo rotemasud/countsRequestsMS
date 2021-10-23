@@ -1,23 +1,12 @@
 resource "aws_dynamodb_table" "basic-dynamodb-table" {
   name           = var.name
-  billing_mode   = "PROVISIONED"
-  read_capacity  = 3
-  write_capacity = 3
+  read_capacity  = 2
+  write_capacity = 2
   hash_key       = "Id"
-
+  
   attribute {
-    name = "UserId"
+    name = "Id"
     type = "S"
-  }
-
-  attribute {
-    name = "countsRequests"
-    type = "N"
-  }
-
-  ttl {
-    attribute_name = "TimeToExist"
-    enabled        = false
   }
 
   tags = {
