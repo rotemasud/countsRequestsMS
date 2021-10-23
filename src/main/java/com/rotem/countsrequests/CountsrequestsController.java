@@ -2,15 +2,20 @@ package com.rotem.countsrequests;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.AttributeAction;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
+
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.ReturnValue;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
@@ -32,18 +37,20 @@ public class CountsrequestsController {
 
 		final String paraName="table_name";
 		String table_name;
-        String name = "webapp";
+        String name = "webserver";
         String projection_expression = "countsRequests";
 		Integer requestsCounterFromTable;
-		Integer currentrequestsCount;
 		String requestsCounterResult;
 		GetItemRequest request = null;
 		String jsonResult;
 		final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+		AmazonDynamoDB client = AmazonDynamoDBClientBuilder.defaultClient();
+		DynamoDB dynamoDB = new DynamoDB(client);
 		final SsmClient ssmClient = SsmClient.builder().build();
-        HashMap<String,AttributeValue> key_to_get =new HashMap<String,AttributeValue>();    		
-
+        HashMap<String,AttributeValue> key_to_get =new HashMap<String,AttributeValue>(); 
+		   		
         try {
+
 			// getting the table name from parameter store
 			System.out.format("Retrieving value of the key \"%s\" from paramter store\n",paraName);
 			GetParameterRequest parameterRequest = GetParameterRequest.builder().name(paraName).build();
@@ -56,31 +63,27 @@ public class CountsrequestsController {
 			System.out.format("Retrieving item \"%s\" from \"%s\"\n",name, table_name);
 			request = new GetItemRequest().withKey(key_to_get).withTableName(table_name).withProjectionExpression(projection_expression);
 			Map<String,AttributeValue> returned_item =ddb.getItem(request).getItem();
+			Table table = dynamoDB.getTable(table_name);
 
 			if (returned_item != null) {
-                Set<String> keys = returned_item.keySet();
-				String key = keys.iterator().next();
-				requestsCounterResult = returned_item.get(key).toString();
-				System.out.println(requestsCounterResult);
-				JSONObject jsonObj = new JSONObject(requestsCounterResult);
-				requestsCounterFromTable = Integer.valueOf(jsonObj.getInt("N"));
-				System.out.println(requestsCounterFromTable);
-				currentrequestsCount=requestsCounterFromTable + 1;
 
-				//updating the requestsCounter in dynamoDB table
-				System.out.format("Updating \"%s\" in %s\n", name, table_name);
-				HashMap<String,AttributeValue> item_key = new HashMap<String,AttributeValue>();
-				item_key.put("Id", new AttributeValue(name));
-				HashMap<String,AttributeValueUpdate> updated_values =new HashMap<String,AttributeValueUpdate>();
-				updated_values.put("countsRequests", new AttributeValueUpdate(new AttributeValue().withN(currentrequestsCount.toString()), AttributeAction.PUT));
-				ddb.updateItem(table_name, item_key, updated_values);
-				jsonResult = new JSONObject().put("count", currentrequestsCount).toString();
+			/////atomic counter
+			UpdateItemSpec updateItemSpec = new UpdateItemSpec().withPrimaryKey("Id", name)
+			.withUpdateExpression("set countsRequests = countsRequests + :val")
+			.withValueMap(new ValueMap().withNumber(":val", 1)).withReturnValues(ReturnValue.UPDATED_NEW);
+			System.out.println("Incrementing an atomic counter...");
+            UpdateItemOutcome outcome = table.updateItem(updateItemSpec);
+			requestsCounterResult = outcome.getItem().toJSONPretty();
+			System.out.println("UpdateItem succeeded:\n" +requestsCounterResult);
+			JSONObject jsonObj = new JSONObject(requestsCounterResult);
+			requestsCounterFromTable = Integer.valueOf(jsonObj.getInt(projection_expression));
+			jsonResult = new JSONObject().put("count", requestsCounterFromTable).toString();
 
             } else {
 				// this is the first request setting to to 1 in the dynamoDB table
 				HashMap<String,AttributeValue> item_values =new HashMap<String,AttributeValue>();
 				item_values.put("Id",new AttributeValue(name));
-				item_values.put("countsRequests",new AttributeValue().withN("1"));
+				item_values.put(projection_expression,new AttributeValue().withN("1"));
 				ddb.putItem(table_name, item_values);
                 System.out.format("No item found with the key %s!\n", name);
 				jsonResult = new JSONObject().put("count", 1).toString();
