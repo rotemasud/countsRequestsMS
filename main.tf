@@ -28,10 +28,20 @@ resource "aws_dynamodb_table" "dynamodb-terraform-state-lock" {
 }
 
 
+
+
 module "dynamodb_table" {
   source         = "./dynamodb"
   name           = var.name
   environment    = var.environment
+  
+}
+
+
+module "parameter_store" {
+  source          = "./parameter-store"
+  name            = "table_name"
+  value           = var.name
   
 }
 
