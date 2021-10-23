@@ -45,6 +45,7 @@ public class CountsrequestsController {
 
         try {
 			// getting the table name from parameter store
+			System.out.format("Retrieving value of the key \"%s\" from paramter store\n",paraName);
 			GetParameterRequest parameterRequest = GetParameterRequest.builder().name(paraName).build();
 			GetParameterResponse parameterResponse = ssmClient.getParameter(parameterRequest);
 			table_name = parameterResponse.parameter().value();
