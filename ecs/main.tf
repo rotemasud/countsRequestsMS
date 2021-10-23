@@ -38,9 +38,9 @@ resource "aws_iam_role" "ecs_task_role" {
 EOF
 }
 
-resource "aws_iam_policy" "dynamodb" {
-  name        = "${var.name}-task-policy-dynamodb"
-  description = "Policy that allows access to DynamoDB"
+resource "aws_iam_policy" "dynamodb_ssm" {
+  name        = "${var.name}-task-policy-dynamodb-ssm"
+  description = "Policy that allows access to DynamoDB and ssm parameter store"
 
   policy = <<EOF
 {
@@ -59,7 +59,15 @@ resource "aws_iam_policy" "dynamodb" {
                 "dynamodb:Scan",
                 "dynamodb:Query",
                 "dynamodb:UpdateItem",
-                "dynamodb:UpdateTable"
+                "dynamodb:UpdateTable",
+                "ssm:DescribeParameters",
+                "ssm:PutParameter",
+                "ssm:DeleteParameter",
+                "ssm:GetParameterHistory",
+                "ssm:GetParametersByPath",
+                "ssm:GetParameters",
+                "ssm:GetParameter",
+                "ssm:DeleteParameters"
             ],
             "Resource": "*"
         }
@@ -78,7 +86,7 @@ resource "aws_iam_role_policy_attachment" "ecs-task-execution-role-policy-attach
 
 resource "aws_iam_role_policy_attachment" "ecs-task-role-policy-attachment" {
   role       = aws_iam_role.ecs_task_role.name
-  policy_arn = aws_iam_policy.dynamodb.arn
+  policy_arn = aws_iam_policy.dynamodb_ssm.arn
 }
 
 resource "aws_cloudwatch_log_group" "main" {
